@@ -1,25 +1,147 @@
 ---
 title: "Reproducible Research: Peer Assessment 1"
+author: Cedric Bonjour
 output: 
   html_document:
     keep_md: true
 ---
 
-
 ## Loading and preprocessing the data
+
+```{r}
+library(data.table)
+
+raw <- fread("activity.csv")
+
+head(raw[!is.na(steps)])
+
+
+```
 
 
 
 ## What is mean total number of steps taken per day?
 
+Part 1
+
+```{r}
+t.steps <- aggregate( steps~date, raw, sum)
+names(t.steps)[2] <- "total.steps"
+t.steps
+```
+
+Part 2
+
+```{r}
+hist(t.steps$total.steps, 
+     breaks=15,
+     xlab="Steps Taken Per Day", 
+     main="Histogram of Steps Taken Per Day")
+
+```
+
+Part 3 
+
+Total steps per day mean and median
+
+```{r}
+c("mean" = mean(t.steps$total.steps), "median" =median(t.steps$total.steps))
+```
+
 
 
 ## What is the average daily activity pattern?
+
+Part 1
+
+```{r}
+
+m.interval <-aggregate( steps ~ interval, raw ,mean,na.rm=TRUE)
+
+names(m.interval)[2] <- "meanSteps"
+
+plot(m.interval$interval,m.interval$meanSteps,
+     type="l",
+     xlab="5-Minute Interval",
+     ylab="Mean Steps Taken",
+     main="Steps during the Day")
+
+
+```
+Part 2
+```{r}
+ max <- m.interval[  which.max(m.interval$meanSteps), ]
+names(max)[2] <- "max.steps"
+max
+ # c("" = m.interval$interval[which.max(m.interval$steps)])
+```
 
 
 
 ## Imputing missing values
 
+Part 1
+```{r}
+c ("Number of rows with missing data" = sum(!complete.cases(raw)))
+
+```
+
+Part 2 & 3
+
+```{r}
+fill <- merge(raw , m.interval, by="interval", sort = F)
+fill[is.na(steps)]$steps <- round (fill[is.na(steps), meanSteps])
+fill[,meanSteps:=NULL]
+fill
+```
+Part 4 
+
+```{r}
+t.steps.filled <- aggregate( steps~date, fill, sum)
+names(t.steps.filled)[2] <- "total.steps"
+t.steps.filled
+```
+
+
+```{r}
+hist(t.steps.filled$total.steps, 
+     breaks=15,
+     xlab="Steps Taken Per Day", 
+     main="Histogram of Steps Taken Per Day")
+
+```
+Total steps per day mean and median
+
+```{r}
+c("mean" = mean(t.steps.filled$total.steps), "median" =median(t.steps.filled$total.steps))
+```
+
+
+We notice that imputing on missing values does not affect the results much
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+```{r}
+
+fill$weekday<-weekdays(as.Date(fill$date))
+
+fill$dayType <- factor(ifelse(fill$weekday=="Saturday"|fill$weekday=="Sunday", "weekend", "weekday"))
+
+fill
+
+```
+```{r}
+r <-aggregate(steps~interval+dayType, fill, mean)
+names(r)[3] <- "mean.steps"
+r
+```
+```{r}
+library(lattice)
+xyplot(r$mean.steps ~ r$interval|r$dayType,
+       r,
+       type="l",
+       layout=c(1,2),
+       xlab="Interval",
+       ylab="Number of Steps")
+```
